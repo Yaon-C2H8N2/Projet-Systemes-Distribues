@@ -77,15 +77,24 @@ void initBodies(std::vector<Body>& bodies) {
         bodies[0].vz = 0;
     }
 
+    int externalDiameter = 8000;
+    int internalDiameter = 4000;
 
     for (size_t i = 1; i < bodies.size(); ++i) {
+
+        // random position en anneau en fonction de externalDiameter et internalDiameter
+        double r = (internalDiameter+(rand() % (externalDiameter-internalDiameter)));
+        double theta = (rand() % 360) * (M_PI/180);
+        double x = r * cos(theta);
+        double y = r * sin(theta);
+
         bodies[i].mass = 1.0; // plus petite masse
-        bodies[i].x = dis_position(gen);
-        bodies[i].y = dis_position(gen);
-        bodies[i].z = dis_position(gen);
-        bodies[i].vx = dis_velocity(gen);
-        bodies[i].vy = dis_velocity(gen);
-        bodies[i].vz = dis_velocity(gen);
+        bodies[i].x = x;
+        bodies[i].y = y;
+        bodies[i].z = 0;
+        bodies[i].vx = 0;
+        bodies[i].vy = 0;
+        bodies[i].vz = 0;
     }
 }
 
