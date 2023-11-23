@@ -1,12 +1,12 @@
-//mpicxx -o nbody_simulation calcul.cpp
+//mpicxx -std=c++11 -o nbody_simulation calcul.cpp
 //time mpiexec -n 1 nbody_simulation
 #include <iostream>
 #include <vector>
 #include <fstream>
-#include <cstdlib>
-#include <ctime>
 #include <cmath>
 #include <mpi.h>
+#include <random>
+#include <iomanip>
 
 const double G = 6.67430e-11; // Gravitational constant
 
@@ -15,6 +15,7 @@ struct Body {
     double x, y, z; // Coordinates
     double vx, vy, vz; // Velocities
 
+    Body() : mass(0), x(0), y(0), z(0), vx(0), vy(0), vz(0) {}
     Body(double m, double _x, double _y, double _z, double _vx, double _vy, double _vz)
             : mass(m), x(_x), y(_y), z(_z), vx(_vx), vy(_vy), vz(_vz) {}
 };
@@ -59,55 +60,107 @@ void updatePositions(std::vector<Body>& bodies, double dt) {
     }
 }
 
-int main(int argc, char** argv) {
-    srand(static_cast<unsigned>(time(nullptr)));
+void initBodies(std::vector<Body>& bodies) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis_position(-50.0, 50.0); // Range for position
+    std::uniform_real_distribution<> dis_velocity(-0.1, 0.1); // Range for velocity
 
-    int rank, numProcesses;
-
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
-
-    std::vector<Body> bodies;
-
-    bodies.push_back(Body(100, (rand() % 100) - 50, (rand() % 100) - 50, (rand() % 100) - 50, 0,0,0));
-
-
-    for (int i = 0; i<500; i++){
-        bodies.push_back(Body(1, (rand() % 100) - 50, (rand() % 100) - 50, (rand() % 100) - 50, 0,0,0));
-
+    // masse au centre
+    if (!bodies.empty()) {
+        bodies[0].mass = 10000.0;
+        bodies[0].x = 0;
+        bodies[0].y = 0;
+        bodies[0].z = 0;
+        bodies[0].vx = 0;
+        bodies[0].vy = 0;
+        bodies[0].vz = 0;
     }
 
-    //bodies.push_back(Body(10000000, 0, 0, 0, 0, 0, 0));
-    //bodies.push_back(Body(1000000, 9500, -10000, 0, -1000, 1000, 0));
-    //bodies.push_back(Body(100000, -10100, 9000, 0, 1000, -1000, 0));
+
+    for (size_t i = 1; i < bodies.size(); ++i) {
+        bodies[i].mass = 1.0; // plus petite masse
+        bodies[i].x = dis_position(gen);
+        bodies[i].y = dis_position(gen);
+        bodies[i].z = dis_position(gen);
+        bodies[i].vx = dis_velocity(gen);
+        bodies[i].vy = dis_velocity(gen);
+        bodies[i].vz = dis_velocity(gen);
+    }
+}
+
+
+int main(int argc, char** argv) {
 
 
 
-    double dt = 0.01; // Time step
+    MPI_Init(&argc, &argv);
 
-    std::ofstream csvFile("../data/nbody_simulation.csv");
+
+
+    int size, rank;
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // params
+    const double timeStep = 0.01;
+
+    int total_bodies = 1000;
+    int num_steps = 100;
+
+    // parse cli
+    if (argc >= 3) {
+        total_bodies = std::atoi(argv[1]);
+        num_steps = std::atoi(argv[2]);
+        if (rank == 0)
+            std::cout << "Bodies: " << total_bodies << " | Steps: " << num_steps << std::endl;
+    } else {
+        std::cout << "Usage: " << argv[0] << " <total_bodies> <num_steps>" << std::endl;
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+    // distribuer
+    int local_num_bodies = total_bodies / size;
+    std::vector<Body> local_bodies(local_num_bodies);
+
+    // local boides
+    initBodies(local_bodies);
+
+    std::ofstream csvFile;
     if (rank == 0) {
+        csvFile.open("../data/nbody_simulation.csv");
         csvFile << "step,x,y,z,mass\n";
     }
 
-    for (int step = 0; step < 10000; ++step) {
-        calculateForces(bodies, rank, numProcesses);
+    for (int step = 0; step < num_steps; ++step) {
+        calculateForces(local_bodies, rank, size);
+        updatePositions(local_bodies, timeStep);
 
-        // Gather and update positions
-        MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, bodies.data(), sizeof(Body) * bodies.size(), MPI_BYTE, MPI_COMM_WORLD);
-        updatePositions(bodies, dt);
+        std::vector<Body> all_bodies;
+        if (rank == 0) {
+            all_bodies.resize(total_bodies);
+        }
+
+        MPI_Gather(local_bodies.data(), local_num_bodies * sizeof(Body), MPI_BYTE,
+                   all_bodies.data(), local_num_bodies * sizeof(Body), MPI_BYTE, 0, MPI_COMM_WORLD);
 
         if (rank == 0) {
-            for (size_t i = 0; i < bodies.size(); ++i) {
-                csvFile << step << "," << bodies[i].x << "," << bodies[i].y << "," << bodies[i].z << "," << bodies[i].mass << "\n";
+            for (const auto& body : all_bodies) {
+                csvFile << step << ","
+                        << std::fixed << std::setprecision(6)
+                        << body.x << ","
+                        << body.y << ","
+                        << body.z << ","
+                        << body.mass << "\n";
             }
         }
+
+        MPI_Barrier(MPI_COMM_WORLD);
     }
 
-    csvFile.close();
+    if (rank == 0) {
+        csvFile.close();
+    }
 
     MPI_Finalize();
-
     return 0;
 }
