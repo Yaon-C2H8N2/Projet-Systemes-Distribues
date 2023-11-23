@@ -61,11 +61,6 @@ void updatePositions(std::vector<Body>& bodies, double dt) {
 }
 
 void initBodies(std::vector<Body>& bodies) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis_position(-50.0, 50.0); // Range for position
-    std::uniform_real_distribution<> dis_velocity(-0.1, 0.1); // Range for velocity
-
     // masse au centre
     if (!bodies.empty()) {
         bodies[0].mass = 10000.0;
