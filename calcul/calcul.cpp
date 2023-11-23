@@ -1,5 +1,5 @@
 //mpicxx -std=c++11 -o nbody_simulation calcul.cpp
-//time mpiexec -n 1 nbody_simulation
+//time mpiexec -np 10 nbody_simulation 5000 500
 #include <iostream>
 #include <vector>
 #include <fstream>
