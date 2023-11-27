@@ -73,7 +73,7 @@ void initBodies(std::vector<Body>& bodies) {
     }
 
     int externalDiameter = 8000;
-    int internalDiameter = 4000;
+    int internalDiameter = 1000;
 
     for (size_t i = 1; i < bodies.size(); ++i) {
 
@@ -93,21 +93,20 @@ void initBodies(std::vector<Body>& bodies) {
     }
 }
 
+void writeOutput(std::ofstream& file, const std::vector<Body>& bodies, int timestep) {
+    for (const auto& body : bodies) {
+        file << timestep << "," << body.x << "," << body.y << "," << body.z << "," << body.mass << "\n";
+    }
+}
 
-int main(int argc, char** argv) {
-
-
-
+int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
 
-
-
-    int size, rank;
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    // params
-    const double timeStep = 0.01;
+    double dt = 0.1;
 
     int total_bodies = 1000;
     int num_steps = 100;
@@ -122,49 +121,51 @@ int main(int argc, char** argv) {
         std::cout << "Usage: " << argv[0] << " <total_bodies> <num_steps>" << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
-    // distribuer
-    int local_num_bodies = total_bodies / size;
-    std::vector<Body> local_bodies(local_num_bodies);
 
-    // local boides
-    initBodies(local_bodies);
-
-    std::ofstream csvFile;
-    if (rank == 0) {
-        csvFile.open("../data/nbody_simulation.csv");
-        csvFile << "step,x,y,z,mass\n";
-    }
-
-    for (int step = 0; step < num_steps; ++step) {
-        calculateForces(local_bodies, rank, size);
-        updatePositions(local_bodies, timeStep);
-
-        std::vector<Body> all_bodies;
-        if (rank == 0) {
-            all_bodies.resize(total_bodies);
-        }
-
-        MPI_Gather(local_bodies.data(), local_num_bodies * sizeof(Body), MPI_BYTE,
-                   all_bodies.data(), local_num_bodies * sizeof(Body), MPI_BYTE, 0, MPI_COMM_WORLD);
-
-        if (rank == 0) {
-            for (const auto& body : all_bodies) {
-                csvFile << step << ","
-                        << std::fixed << std::setprecision(6)
-                        << body.x << ","
-                        << body.y << ","
-                        << body.z << ","
-                        << body.mass << "\n";
-            }
-        }
-
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
+    std::vector<Body> bodies(total_bodies);
+    std::vector<Body> localBodies(total_bodies / size);  // Subset of bodies for each process
 
     if (rank == 0) {
-        csvFile.close();
+        initBodies(bodies);
+    }
+
+    MPI_Bcast(bodies.data(), total_bodies * sizeof(Body), MPI_BYTE, 0, MPI_COMM_WORLD);
+
+    std::ofstream outputFile;
+    if (rank == 0) {
+        outputFile.open("../data/nbody_simulation.csv");
+        outputFile << "step,x,y,z,mass\n";
+    }
+
+    int startIdx = rank * (total_bodies / size);
+    int endIdx = startIdx + (total_bodies / size);
+
+    for (int t = 0; t < num_steps; ++t) {
+        // Each process calculates forces for all bodies
+        calculateForces(bodies, rank, size);
+
+        // Update velocities and positions for the subset of bodies
+        for (int i = startIdx; i < endIdx; ++i) {
+            bodies[i].x += bodies[i].vx * dt;
+            bodies[i].y += bodies[i].vy * dt;
+            bodies[i].z += bodies[i].vz * dt;
+        }
+
+        // Synchronize the updated data
+        MPI_Allgather(&bodies[startIdx], (total_bodies / size) * sizeof(Body), MPI_BYTE,
+                      bodies.data(), (total_bodies / size) * sizeof(Body), MPI_BYTE,
+                      MPI_COMM_WORLD);
+
+        if (rank == 0) {
+            writeOutput(outputFile, bodies, t);
+        }
+    }
+
+    if (rank == 0) {
+        outputFile.close();
     }
 
     MPI_Finalize();
     return 0;
 }
+
