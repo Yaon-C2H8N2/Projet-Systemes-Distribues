@@ -63,7 +63,7 @@ void updatePositions(std::vector<Body>& bodies, double dt) {
 void initBodies(std::vector<Body>& bodies) {
     // masse au centre
     if (!bodies.empty()) {
-        bodies[0].mass = 10000.0;
+        bodies[0].mass = 100000.0;
         bodies[0].x = 0;
         bodies[0].y = 0;
         bodies[0].z = 0;
@@ -72,8 +72,8 @@ void initBodies(std::vector<Body>& bodies) {
         bodies[0].vz = 0;
     }
 
-    int externalDiameter = 8000;
-    int internalDiameter = 1000;
+    int externalDiameter = 80000;
+    int internalDiameter = 40000;
 
     for (size_t i = 1; i < bodies.size(); ++i) {
 
@@ -87,8 +87,8 @@ void initBodies(std::vector<Body>& bodies) {
         bodies[i].x = x;
         bodies[i].y = y;
         bodies[i].z = 0;
-        bodies[i].vx = 0;
-        bodies[i].vy = 0;
+        bodies[i].vx = 10;
+        bodies[i].vy = -10;
         bodies[i].vz = 0;
     }
 }
@@ -161,6 +161,10 @@ int main(int argc, char *argv[]) {
 
         if (rank == 0) {
             buffer.push_back(bodies);
+            if (num_steps % 10 == 0)
+            {
+                std::cout << "10 steps done "<< num_steps << std::endl;
+            }
             if(buffer.size() >= buffer_size) {
                 printf("Dumping steps %d to %d into csv file...\n", (t+1) - buffer_size, (t + 1));
                 for(int i = 0; i < buffer_size; ++i) {
@@ -178,4 +182,6 @@ int main(int argc, char *argv[]) {
     MPI_Finalize();
     return 0;
 }
+
+
 
