@@ -110,6 +110,7 @@ int main(int argc, char *argv[]) {
 
     int total_bodies = 1000;
     int num_steps = 100;
+    int buffer_size = 10;
 
     // parse cli
     if (argc >= 3) {
@@ -121,9 +122,11 @@ int main(int argc, char *argv[]) {
         std::cout << "Usage: " << argv[0] << " <total_bodies> <num_steps>" << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
     }
+    buffer_size = num_steps / 10;
 
     std::vector<Body> bodies(total_bodies);
     std::vector<Body> localBodies(total_bodies / size);  // Subset of bodies for each process
+    std::vector<std::vector<Body>> buffer(0);
 
     if (rank == 0) {
         initBodies(bodies);
@@ -157,7 +160,14 @@ int main(int argc, char *argv[]) {
                       MPI_COMM_WORLD);
 
         if (rank == 0) {
-            writeOutput(outputFile, bodies, t);
+            buffer.push_back(bodies);
+            if(buffer.size() >= buffer_size) {
+                printf("Dumping steps %d to %d into csv file...\n", (t+1) - buffer_size, (t + 1));
+                for(int i = 0; i < buffer_size; ++i) {
+                    writeOutput(outputFile, buffer[i], t - buffer_size + i);
+                }
+                buffer = std::vector<std::vector<Body>>(0);
+            }
         }
     }
 
