@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
             buffer.push_back(bodies);
             if (num_steps % 10 == 0)
             {
-                std::cout << "10 steps done "<< num_steps << std::endl;
+                std::cout << "10 steps done "<< t << std::endl;
             }
             if(buffer.size() >= buffer_size) {
                 printf("Dumping steps %d to %d into csv file...\n", (t+1) - buffer_size, (t + 1));
