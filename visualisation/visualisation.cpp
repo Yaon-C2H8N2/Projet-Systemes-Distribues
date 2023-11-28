@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <thread>
 
 #define NB_STEP 10000
 #define NB_POINTS 2
@@ -26,10 +27,7 @@ void reshape(int x, int y);
 void readInputCSV();
 
 int main(int argc, char **argv) {
-    std::cout << "Lecture des données..." << std::endl;
-    readInputCSV();
-    //todo : print le load time
-    std::cout << "Fin de la lecture des données" << std::endl;
+    std::thread reader(readInputCSV);
     //init glut et creation de la fenetre
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
@@ -48,10 +46,12 @@ int main(int argc, char **argv) {
     glutReshapeFunc(reshape);
 
     glutMainLoop();
+    reader.join();
     return 0;
 }
 
 int displayedStep = 0;
+
 void affichage() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glShadeModel(GL_SMOOTH);
@@ -75,7 +75,7 @@ void affichage() {
     glutSwapBuffers();
     glutPostRedisplay();
 
-    displayedStep = (displayedStep+1)%NB_STEP;
+    displayedStep = (displayedStep + 1) % NB_STEP;
 }
 
 void reshape(int x, int y) {
@@ -87,18 +87,26 @@ void reshape(int x, int y) {
 
 void readInputCSV() {
     auto *inputFile = new std::ifstream("../data/nbody_simulation.csv");
-    if(inputFile->is_open()){
+    if (inputFile->is_open()) {
+        std::cout << "Lecture des données..." << std::endl;
         std::string line;
         getline(*inputFile, line); // ligne meta
-        for(int step = 0; step<NB_STEP; step++){
-            for(int particule = 0; particule<NB_POINTS; particule++){
+        for (int step = 0; step < NB_STEP; step++) {
+            for (int particule = 0; particule < NB_POINTS; particule++) {
                 getline(*inputFile, line);
                 //std::cout << "step : " << step << " particule : " << particule << " detail : " << line << std::endl;
                 //todo parse la ligne et remplir le tableau
-                int stepCSV = stoi(line.substr(0, line.find(',')));
-                line = line.substr(line.find(',')+1);
+                int stepCSV = 0;
+                try {
+                    stepCSV = stoi(line.substr(0, line.find(',')));
+                } catch (std::invalid_argument &e) {
+                    std::cout << "Error while parsing step : " << e.what() << std::endl;
+                    std::cout << "step : " << step << " particule : " << particule << " detail : " << line << std::endl;
+                    exit(1);
+                }
+                line = line.substr(line.find(',') + 1);
                 double xCSV = stod(line.substr(0, line.find(',')));
-                line = line.substr(line.find(',')+1);
+                line = line.substr(line.find(',') + 1);
                 double yCSV = stod(line.substr(0, line.find(',')));
                 //std::cout << "parsedStep : " << stepCSV << " parsedX : " << xCSV << " parsedY : " << yCSV << std::endl;
                 //todo : si step = stepcsv alors remplir le tableau sinon exit tout avec erreur de lecture du csv
@@ -107,5 +115,7 @@ void readInputCSV() {
             }
         }
         inputFile->close();
+        std::cout << "Fin de la lecture des données" << std::endl;
+        //todo : print le load time
     }
 }
