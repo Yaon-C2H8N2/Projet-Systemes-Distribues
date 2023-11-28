@@ -7,6 +7,7 @@
 #include <mpi.h>
 #include <random>
 #include <iomanip>
+#include <thread>
 
 const double G = 6.67430e-11; // Gravitational constant
 
@@ -99,6 +100,14 @@ void writeOutput(std::ofstream& file, const std::vector<Body>& bodies, int times
     }
 }
 
+
+void dumpSteps(const std::vector<std::vector<Body>> buffer, int buffer_size, int t, std::ofstream& outputFile){
+    printf("Dumping steps %d to %d into csv file...\n", (t+1) - buffer_size, (t + 1));
+    for(int i = 0; i < buffer_size; ++i) {
+        writeOutput(outputFile, buffer[i], t - buffer_size + i);
+    }
+}
+
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
 
@@ -135,6 +144,7 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(bodies.data(), total_bodies * sizeof(Body), MPI_BYTE, 0, MPI_COMM_WORLD);
 
     std::ofstream outputFile;
+    std::thread dumper;
     if (rank == 0) {
         outputFile.open("../data/nbody_simulation.csv");
         outputFile << "step,x,y,z,mass\n";
@@ -161,15 +171,17 @@ int main(int argc, char *argv[]) {
 
         if (rank == 0) {
             buffer.push_back(bodies);
-            if (num_steps % 10 == 0)
+            if (t % 10 == 0)
             {
                 std::cout << "10 steps done "<< t << std::endl;
             }
+            if(dumper.joinable()){
+                printf("Joining dumper thread...\n");
+                dumper.join();
+            }
             if(buffer.size() >= buffer_size) {
-                printf("Dumping steps %d to %d into csv file...\n", (t+1) - buffer_size, (t + 1));
-                for(int i = 0; i < buffer_size; ++i) {
-                    writeOutput(outputFile, buffer[i], t - buffer_size + i);
-                }
+                printf("Starting dumper thread...\n");
+                dumper = std::thread(dumpSteps, buffer, buffer_size, t, std::ref(outputFile));
                 buffer = std::vector<std::vector<Body>>(0);
             }
         }
@@ -177,6 +189,8 @@ int main(int argc, char *argv[]) {
 
     if (rank == 0) {
         outputFile.close();
+        printf("Joining dumper thread...\n");
+        dumper.join();
     }
 
     MPI_Finalize();
