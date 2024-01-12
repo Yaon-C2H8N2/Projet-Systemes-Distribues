@@ -27,24 +27,26 @@ void reshape(int x, int y);
 void readInputCSV();
 
 int main(int argc, char **argv) {
+    //Starting file input thread to parallelize the reading of the csv
     std::thread reader(readInputCSV);
-    //init glut et creation de la fenetre
+    //GLUT initialization and window creation
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowPosition(200, 200);
     glutInitWindowSize(500, 500);
     glutCreateWindow("N-Body Simulation");
 
-    //init opengl
+    //OpenGL initialization
     glClearColor(0.0, 0.0, 0.0, 0.0);
     glColor3f(1.0, 1.0, 1.0);
     glPointSize(5.0);
     glEnable(GL_DEPTH_TEST);
 
-    //def des fonctions de callbacks
+    //Callback function definitions
     glutDisplayFunc(affichage);
     glutReshapeFunc(reshape);
 
+    //Starting the main loop
     glutMainLoop();
     reader.join();
     return 0;
@@ -52,20 +54,22 @@ int main(int argc, char **argv) {
 
 int displayedStep = 0;
 
+//Display function
 void affichage() {
+    //Clearing the window and setting shading model
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glShadeModel(GL_SMOOTH);
 
+    //Camera position and orientation
     glLoadIdentity();
     glRotatef(0, 1.0, 0.0, 0.0);
     glRotatef(0, 0.0, 1.0, 0.0);
     glColor3f(1.0, 1.0, 1.0);
 
-    //lecture des prochaines positions des points depuis le fichier csv
+    //Showing each body as a point
     glBegin(GL_POINTS);
-    //affichage des points avec glVertex2d(x,y)
     glColor3f(1.0, 1.0, 1.0);
-    //todo: remplacer le 5000 par la coord x et y la plus grande pour que toutes les valeurs soient entre 0 et 1
+    //Dividing by 10000 to scale down the points spreading area
     for(int i = 0; i<NB_POINTS; i++){
         glVertex2d(points[displayedStep][i][0]/10000, points[displayedStep][i][1]/10000);
     }
@@ -78,6 +82,7 @@ void affichage() {
     displayedStep = (displayedStep + 1) % NB_STEP;
 }
 
+//Function called when the window is resized
 void reshape(int x, int y) {
     if (x < y)
         glViewport(0, (y - x) / 2, x, x);
@@ -86,16 +91,18 @@ void reshape(int x, int y) {
 }
 
 void readInputCSV() {
+    //Filepath
     auto *inputFile = new std::ifstream("../data/nbody_simulation.csv");
     if (inputFile->is_open()) {
         std::cout << "Lecture des données..." << std::endl;
         std::string line;
         getline(*inputFile, line); // ligne meta
+        //Reading step by step
         for (int step = 0; step < NB_STEP; step++) {
+            //Reading body by body for each step
             for (int particule = 0; particule < NB_POINTS; particule++) {
                 getline(*inputFile, line);
-                //std::cout << "step : " << step << " particule : " << particule << " detail : " << line << std::endl;
-                //todo parse la ligne et remplir le tableau
+                //Debug var
                 int stepCSV = 0;
                 try {
                     stepCSV = stoi(line.substr(0, line.find(',')));
@@ -104,18 +111,18 @@ void readInputCSV() {
                     std::cout << "step : " << step << " particule : " << particule << " detail : " << line << std::endl;
                     exit(1);
                 }
+                //Parsing the line
                 line = line.substr(line.find(',') + 1);
                 double xCSV = stod(line.substr(0, line.find(',')));
                 line = line.substr(line.find(',') + 1);
                 double yCSV = stod(line.substr(0, line.find(',')));
-                //std::cout << "parsedStep : " << stepCSV << " parsedX : " << xCSV << " parsedY : " << yCSV << std::endl;
-                //todo : si step = stepcsv alors remplir le tableau sinon exit tout avec erreur de lecture du csv
+
+                //Storing the parsed data
                 points[step][particule][0] = xCSV;
                 points[step][particule][1] = yCSV;
             }
         }
         inputFile->close();
         std::cout << "Fin de la lecture des données" << std::endl;
-        //todo : print le load time
     }
 }
