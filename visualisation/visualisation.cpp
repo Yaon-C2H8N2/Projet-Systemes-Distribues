@@ -121,11 +121,11 @@ void reshape(int x, int y) {
 void mouse(int button, int state, int x, int y) {
     switch (button) {
         case 3:
-            zoom = zoom - 0.05;
+            zoom = zoom - 1000;
             glutPostRedisplay();
             break;
         case 4:
-            zoom = zoom + 0.05;
+            zoom = zoom + 1000;
             glutPostRedisplay();
             break;
         default:
