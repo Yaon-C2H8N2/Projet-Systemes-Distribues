@@ -12,13 +12,13 @@
 #include <iostream>
 #include <thread>
 
-#define NB_STEP 10000
-#define NB_POINTS 2
 
+int NB_STEP = 300;
+int NB_POINTS = 10000;
 
 char presse;
 int anglex, angley, x, y, xold, yold;
-double points[NB_STEP][NB_POINTS][2];
+double ***points;
 
 void affichage();
 
@@ -27,6 +27,24 @@ void reshape(int x, int y);
 void readInputCSV();
 
 int main(int argc, char **argv) {
+    //Parsing CLI arguments
+    if (argc >= 3) {
+        NB_POINTS = std::atoi(argv[1]);
+        NB_STEP = std::atoi(argv[2]);
+    } else {
+        std::cout << "Usage: " << argv[0] << " <total_bodies> <num_steps>" << std::endl;
+        exit(1);
+    }
+
+    //Allocating memory for the points
+    points = new double **[NB_STEP];
+    for (int i = 0; i < NB_STEP; i++) {
+        points[i] = new double *[NB_POINTS];
+        for (int j = 0; j < NB_POINTS; j++) {
+            points[i][j] = new double[2];
+        }
+    }
+
     //Starting file input thread to parallelize the reading of the csv
     std::thread reader(readInputCSV);
     //GLUT initialization and window creation
@@ -49,6 +67,15 @@ int main(int argc, char **argv) {
     //Starting the main loop
     glutMainLoop();
     reader.join();
+
+    //Freeing the memory
+    for (int i = 0; i < NB_STEP; i++) {
+        for (int j = 0; j < NB_POINTS; j++) {
+            free(points[i][j]);
+        }
+        free(points[i]);
+    }
+    free(points);
     return 0;
 }
 

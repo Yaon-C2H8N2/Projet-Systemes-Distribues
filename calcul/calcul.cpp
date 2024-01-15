@@ -112,7 +112,7 @@ void writeOutput(std::ofstream& file, const std::vector<Body>& bodies, int times
 void dumpSteps(const std::vector<std::vector<Body>> buffer, int buffer_size, int t, std::ofstream& outputFile){
     printf("Dumping steps %d to %d into csv file...\n", (t+1) - buffer_size, (t + 1));
     for(int i = 0; i < buffer_size; ++i) {
-        writeOutput(outputFile, buffer[i], t - buffer_size + i);
+        writeOutput(outputFile, buffer[i], t - buffer_size + i + 1);
     }
 }
 
