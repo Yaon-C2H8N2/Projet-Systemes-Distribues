@@ -206,6 +206,7 @@ int main(int argc, char *argv[]) {
 
     //Finalize the dumper thread
     if (rank == 0) {
+        buffer.push_back(bodies);
         outputFile.close();
         printf("Joining dumper thread...\n");
         dumper.join();
