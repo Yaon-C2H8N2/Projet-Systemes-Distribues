@@ -38,7 +38,7 @@ void calculateForces(std::vector<Body>& bodies, int rank, int numProcesses) {
                 //double dist = sqrt(dx * dx + dy * dy + dz * dz);
                 double dist = sqrt(dx * dx + dy * dy );
                 double epsilon = 1e-10;
-                double force = (G * bodies[i].mass * massMultiplier * bodies[j].mass * massMultiplier) / (dist * dist * dist + epsilon);
+                double force = (G * bodies[i].mass * massMultiplier * bodies[j].mass * massMultiplier) / (dist * dist + epsilon);
 
                 //double force = (G * bodies[i].mass * massMultiplier* bodies[j].mass * massMultiplier) / (dist * dist * dist);
 
@@ -75,7 +75,7 @@ void initBodies(std::vector<Body>& bodies) {
         bodies[0].x = 0;
         bodies[0].y = 0;
         bodies[0].z = 0;
-        bodies[0].vx = 0;
+        bodies[0].vx = 1000;
         bodies[0].vy = 0;
         bodies[0].vz = 0;
     }
