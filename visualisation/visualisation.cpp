@@ -17,7 +17,7 @@ int NB_STEP = 300;
 int NB_POINTS = 10000;
 
 char presse;
-int anglex, angley, x, y, xold, yold;
+int anglex, angley, x, y, xold, yold, zoom;
 double ***points;
 
 void affichage();
@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
     //Starting file input thread to parallelize the reading of the csv
     std::thread reader(readInputCSV);
     //GLUT initialization and window creation
+    zoom = 10000;
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowPosition(200, 200);
@@ -98,7 +99,7 @@ void affichage() {
     glColor3f(1.0, 1.0, 1.0);
     //Dividing by 10000 to scale down the points spreading area
     for(int i = 0; i<NB_POINTS; i++){
-        glVertex2d(points[displayedStep][i][0]/10000, points[displayedStep][i][1]/10000);
+        glVertex2d(points[displayedStep][i][0]/zoom, points[displayedStep][i][1]/zoom);
     }
     glEnd();
 
@@ -115,6 +116,21 @@ void reshape(int x, int y) {
         glViewport(0, (y - x) / 2, x, x);
     else
         glViewport((x - y) / 2, 0, y, y);
+}
+
+void mouse(int button, int state, int x, int y) {
+    switch (button) {
+        case 3:
+            zoom = zoom - 0.05;
+            glutPostRedisplay();
+            break;
+        case 4:
+            zoom = zoom + 0.05;
+            glutPostRedisplay();
+            break;
+        default:
+            break;
+    }
 }
 
 void readInputCSV() {
