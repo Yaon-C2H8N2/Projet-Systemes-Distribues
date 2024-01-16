@@ -1,6 +1,17 @@
-# Project Readme
+# N Body distributed simulation
 
 This project consists of two main parts: a simulation program (`calcul.cpp`) and a visualization program (`visualisation.cpp`). The simulation program calculates the positions of bodies in a gravitational field and writes the results to a CSV file. The visualization program reads the CSV file and displays the positions of the bodies.
+
+## Speedup
+
+The following table shows the speedup achieved by parallelizing the simulation program using MPI. The simulation was run on a cluster of 18 nodes, each with Intel I9-10900k 10 cores @3.70GHz processors for a total of 180 cores.
+
+| Number of bodies | Number of steps | Number of cores | Time   |
+|------------------|-----------------|-----------------|--------|
+| 10000            | 300             | 1               | 834,45s |
+| 10000            | 300             | 10              | 86,61s |
+| 10000            | 300             | 20              | 54,96s |
+| 10000            | 300             | 180             | 24,1s  |
 
 ## Prerequisites
 
